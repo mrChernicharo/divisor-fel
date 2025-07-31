@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+  </head>
+  <body>
+    <h1>Divisor de despesas</h1>
+
+    <label for="price">Qual foi o valor gasto?</label>
+    <input type="text" name="price" id="price" placeholder="R$ 20,00" value="R$ 120,00" />
+
+    <label for="buyer">Quem pagou?</label>
+    <input type="text" id="buyer" placeholder="Pedrita" required value="Ana" />
+
+    <label for="participants">Com quem você quer dividir a despesa?</label>
+    <input type="text" id="participants" placeholder="Ex: Ana, João, Pedrita" required value="Ana, João, Pedrita" />
+
+    <button>Calcular!</button>
+
+    <table></table>
+  </body>
+
+  <script>
+    const formatCurrency = (value) => value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+    const parseCurrency = (valueStr) => Number(valueStr.replace(/\D/g, ""));
+
+    const buyerInput = document.querySelector("input#buyer");
+    const participantsInput = document.querySelector("input#participants");
+    const priceInput = document.querySelector("input#price");
+    const button = document.querySelector("button");
+    const table = document.querySelector("table");
+
+    const expenses = [];
+
+    priceInput.oninput = () => {
+      value = parseCurrency(priceInput.value) / 100;
+      priceInput.value = formatCurrency(value);
+    };
+
+    button.onclick = () => {
+      // grab current expense info
+      const price = parseCurrency(priceInput.value);
+      const participants = participantsInput.value.split(",").map((name) => name.trim());
+      const buyer = buyerInput.value.trim();
+      if (!participants.includes(buyer)) {
+        participants.push(buyer);
+      }
+      // register new expense
+      expenses.push({ buyer, participants, price });
+
+      analyzeExpensesAndBuildTable();
+    };
+
+    function analyzeExpensesAndBuildTable() {
+      const total = expenses.reduce((acc, next) => (acc += next.price), 0);
+      const allParticipants = [...new Set(expenses.map((expense) => expense.participants).flat())].sort((a, b) =>
+        a.localeCompare(b)
+      );
+
+      // prepare data model: tableRows will be an array of arrays, each item will represent a table cell
+      const tableRows = [];
+      expenses.forEach((expense) => {
+        // create a new dataRow to hold cells
+        const rowCells = [];
+
+        allParticipants.forEach((participant) => {
+          // for each participant (from every expense so far), check if the person is actually involved in the expense, and whether he/she is the buyer
+          const isPayingParticipant = expense.participants.includes(participant);
+          const isBuyer = expense.buyer === participant;
+
+          let balance = 0;
+          // use that info to determine how much the person should pay/receive
+          if (isPayingParticipant) {
+            balance -= expense.price / expense.participants.length;
+          }
+          if (isBuyer) {
+            balance += expense.price;
+          }
+          // add the participant name and balance as a cell into our dataRow
+          rowCells.push({ [participant]: balance });
+        });
+        tableRows.push(rowCells);
+      });
+
+      // consume data model to draw the html table
+      tableRows.forEach((row) => {
+        table.innerHTML = "";
+
+        // table head
+        const tableHead = document.createElement("thead");
+        allParticipants.forEach((participant) => {
+          const th = document.createElement("th");
+          th.textContent = participant;
+          tableHead.append(th);
+        });
+        table.append(tableHead);
+
+        // table body
+        const tableBody = document.createElement("tbody");
+        tableRows.forEach((row, idx) => {
+          const tableRow = document.createElement("tr");
+          tableRow.dataset.rowIdx = idx;
+
+          const delBtn = document.createElement("button");
+          delBtn.textContent = "x";
+          delBtn.onclick = deleteRow;
+
+          row.forEach((cell) => {
+            const tableCell = document.createElement("td");
+
+            const [participant, value] = Object.entries(cell)[0];
+            tableCell.textContent = formatCurrency(value / 100);
+
+            tableRow.append(tableCell);
+          });
+
+          tableRow.append(delBtn);
+          tableBody.append(tableRow);
+        });
+        table.append(tableBody);
+      });
+
+      console.log("analyzeExpensesAndBuildTable :::", { expenses, total, allParticipants, tableRows });
+    }
+
+    function deleteRow(ev) {
+      const tr = ev.target.closest("tr");
+      const rowIdx = Number(tr.dataset.rowIdx);
+      console.log("deleteRow :::", { tr, rowIdx });
+      expenses.splice(rowIdx, 1);
+      analyzeExpensesAndBuildTable();
+    }
+  </script>
+</html>

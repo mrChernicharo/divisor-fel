@@ -20,6 +20,10 @@
     <button>Calcular!</button>
 
     <table></table>
+
+    <hr />
+
+    <output></output>
   </body>
 
   <script>
@@ -31,6 +35,7 @@
     const priceInput = document.querySelector("input#price");
     const button = document.querySelector("button");
     const table = document.querySelector("table");
+    const output = document.querySelector("output");
 
     const expenses = [];
 
@@ -60,7 +65,7 @@
       );
       const total = expenses.reduce((acc, next) => (acc += next.price), 0);
 
-      // prepare data model: tableRows will be an array of arrays, each item will represent a table cell
+      // 1. prepare data model: tableRows will be an array of arrays, each item will represent a table cell
       const tableRows = [];
       expenses.forEach((expense) => {
         // create a new dataRow to hold cells, we'll have a cell for each participant
@@ -85,20 +90,28 @@
         tableRows.push(rowCells);
       });
 
-      // consume data model to draw the html table
+      // 2. consume data model to draw the html table
       tableRows.forEach((row) => {
         table.innerHTML = "";
 
         // table head
         const tableHead = document.createElement("thead");
+
+        // 2.1 create one th for each participant (from all expenses)
         allParticipants.forEach((participant) => {
           const th = document.createElement("th");
           th.textContent = participant;
           tableHead.append(th);
         });
+
+        // extra header -> Price
+        const priceTH = document.createElement("th");
+        priceTH.textContent = "Preço";
+        tableHead.prepend(priceTH); // <-- prepend will add element to the beginning
+
         table.append(tableHead);
 
-        // table body
+        // 2.2 table body
         const tableBody = document.createElement("tbody");
         tableRows.forEach((row, idx) => {
           const tableRow = document.createElement("tr");
@@ -115,16 +128,66 @@
             const [participant, value] = Object.entries(cell)[0];
             tableCell.textContent = formatCurrency(value / 100);
 
+            let color = "black";
+            if (value > 0) color = "seagreen";
+            if (value < 0) color = "red";
+            tableCell.style.color = color;
+
             tableRow.append(tableCell);
           });
 
+          // extra cell -> Price
+          const priceCell = document.createElement("td");
+          priceCell.textContent = formatCurrency(expenses[idx].price / 100);
+
+          tableRow.prepend(priceCell); // <-- prepend will add element to the beginning
           tableRow.append(delBtn);
           tableBody.append(tableRow);
         });
         table.append(tableBody);
       });
 
-      console.log("analyzeExpensesAndBuildTable :::", { expenses, total, allParticipants, tableRows });
+      // 3. object to group balances from all participant
+      const participantsBalance = {};
+      for (let i = 0; i < tableRows.length; i++) {
+        for (let j = 0; j < tableRows[0].length; j++) {
+          const cell = tableRows[i][j];
+          const [participant, value] = Object.entries(cell)[0];
+
+          // initialize participant entry
+          if (!participantsBalance[participant]) {
+            participantsBalance[participant] = 0;
+          }
+
+          // update participant value (add if credit / subtract if debt)
+          participantsBalance[participant] += value;
+        }
+      }
+
+      // 4. output
+      output.innerHTML = "";
+      const totalDiv = document.createElement("div");
+      totalDiv.textContent = `TOTAL GASTO: ${formatCurrency(total / 100)}`;
+      output.append(totalDiv);
+
+      // for each entry in participantsBalance...
+      Object.entries(participantsBalance).forEach(([participant, value]) => {
+        const div = document.createElement("div");
+        // check if debt or credit
+        const verb = value < 0 ? "paga" : "recebe";
+        const color = value < 0 ? "red" : "seagreen";
+        div.textContent = `${participant} ${verb} ${formatCurrency(value / 100)}`;
+        div.style.color = color;
+        output.append(div);
+      });
+
+      console.log("analyzeExpensesAndBuildTable :::", {
+        expenses,
+        total,
+        allParticipants,
+        tableRows,
+        participantsBalance,
+      });
     }
 
     function deleteRow(clickEvent) {

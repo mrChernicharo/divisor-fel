@@ -54,24 +54,25 @@
     };
 
     function analyzeExpensesAndBuildTable() {
-      const total = expenses.reduce((acc, next) => (acc += next.price), 0);
+      // get all unique names from all expenses, remove duplicates and sort them alphabetically
       const allParticipants = [...new Set(expenses.map((expense) => expense.participants).flat())].sort((a, b) =>
         a.localeCompare(b)
       );
+      const total = expenses.reduce((acc, next) => (acc += next.price), 0);
 
       // prepare data model: tableRows will be an array of arrays, each item will represent a table cell
       const tableRows = [];
       expenses.forEach((expense) => {
-        // create a new dataRow to hold cells
+        // create a new dataRow to hold cells, we'll have a cell for each participant
         const rowCells = [];
 
         allParticipants.forEach((participant) => {
-          // for each participant (from every expense so far), check if the person is actually involved in the expense, and whether he/she is the buyer
+          // for each participant (from every expense so far), check if the person is actually involved in the expense, and whether he/she is the actual buyer
           const isPayingParticipant = expense.participants.includes(participant);
           const isBuyer = expense.buyer === participant;
 
+          // use that info to determine how much the person should pay/receive. (non-participants pay zero)
           let balance = 0;
-          // use that info to determine how much the person should pay/receive
           if (isPayingParticipant) {
             balance -= expense.price / expense.participants.length;
           }
@@ -103,13 +104,14 @@
           const tableRow = document.createElement("tr");
           tableRow.dataset.rowIdx = idx;
 
+          // delete row button
           const delBtn = document.createElement("button");
           delBtn.textContent = "x";
           delBtn.onclick = deleteRow;
 
           row.forEach((cell) => {
             const tableCell = document.createElement("td");
-
+            // cell example { "Ana": 3000 }
             const [participant, value] = Object.entries(cell)[0];
             tableCell.textContent = formatCurrency(value / 100);
 
@@ -125,8 +127,8 @@
       console.log("analyzeExpensesAndBuildTable :::", { expenses, total, allParticipants, tableRows });
     }
 
-    function deleteRow(ev) {
-      const tr = ev.target.closest("tr");
+    function deleteRow(clickEvent) {
+      const tr = clickEvent.target.closest("tr");
       const rowIdx = Number(tr.dataset.rowIdx);
       console.log("deleteRow :::", { tr, rowIdx });
       expenses.splice(rowIdx, 1);
